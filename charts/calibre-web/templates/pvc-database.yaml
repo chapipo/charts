@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  {{- if .Values.storage.database.annotations }}
+  annotations:
+    {{ toYaml .Values.storage.database.annotations | indent 4 }}
+  {{- end }}
+  labels:
+    {{- include "calibre-web.labels" . | nindent 4 }}
+  name: {{ template "calibre-web.fullname" . }}-database
+spec:
+  accessModes:
+    {{ toYaml .Values.storage.database.accessModes | indent 4 }}
+  storageClassName: {{ .Values.storage.database.storageClassName }}
+  resources:
+    requests:
+      storage: "{{ .Values.storage.database.size }}"
+

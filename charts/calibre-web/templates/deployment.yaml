@@ -56,17 +56,27 @@ spec:
             failureThreshold: 5
             initialDelaySeconds: 10
             periodSeconds: 10
-            successThreshold: 2
+            successThreshold: 1
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /
               port: http
-            failureThreshold: 5
+            failureThreshold: 30
             initialDelaySeconds: 10
             periodSeconds: 10
             successThreshold: 2
             timeoutSeconds: 5
+          startupProbe:
+            failureThreshold: 120
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 2
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:

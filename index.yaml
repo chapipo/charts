@@ -3,6 +3,16 @@ entries:
   calibre-web:
   - apiVersion: v2
     appVersion: 0.6.20
+    created: "2023-06-21T22:34:05.854098384Z"
+    description: A Helm chart for Kubernetes
+    digest: a48be55bd2b0907842c5bab29d832e59de1dd6154b74880843414ccf3af9ac50
+    name: calibre-web
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/calibre-web-0.1.2/calibre-web-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: 0.6.20
     created: "2023-06-21T22:14:49.832564689Z"
     description: A Helm chart for Kubernetes
     digest: 166e02fb171b190deaa03f66542558466d4b500a2de12664a3306543a064f441
@@ -32,4 +42,4 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/radicale-0.1.0/radicale-0.1.0.tgz
     version: 0.1.0
-generated: "2023-06-21T22:14:49.832573089Z"
+generated: "2023-06-21T22:34:05.854110084Z"

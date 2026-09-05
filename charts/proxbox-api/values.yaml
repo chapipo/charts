@@ -1,0 +1,64 @@
+# -- Default values for proxbox-api
+
+replicaCount: 1
+
+image:
+  # Standard image (nginx + uvicorn internally, no TLS).
+  # Alternative variant with self-signed TLS (mkcert): use tag "<version>-mkcert"
+  # or "latest-mkcert" on the same repository.
+  repository: emersonfelipesp/proxbox-api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Port exposed by the container (nginx inside the container listens on this port
+# and proxies to uvicorn on 127.0.0.1:8001 internally). Matches the PORT
+# environment variable read by the image.
+containerPort: 8000
+
+env:
+  # PORT variable consumed by nginx/uvicorn inside the container.
+  PORT: "8000"
+  # Uncomment and adjust if using the -mkcert variant:
+  # MKCERT_EXTRA_NAMES: "proxbox-api.example.local"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    # The nginx bundled in the image already disables buffering for SSE.
+    # If you put an external Nginx Ingress in front, replicate this behavior
+    # so it doesn't break the SSE streaming used by the NetBox plugin.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+  hosts:
+    - host: proxbox-api.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: proxbox-api-tls
+  #   hosts:
+  #     - proxbox-api.example.com
+
+resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Basic liveness/readiness probes on the HTTP port exposed by nginx.
+# Adjust "path" if the backend exposes a dedicated health endpoint.
+probes:
+  path: /
+  initialDelaySeconds: 10
+  periodSeconds: 15

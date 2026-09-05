@@ -31,6 +31,18 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/calibre-web-0.1.0/calibre-web-0.1.0.tgz
     version: 0.1.0
+  proxbox-api:
+  - apiVersion: v2
+    appVersion: latest
+    created: "2026-09-05T19:52:58.798017159Z"
+    description: Minimal Helm chart to deploy the proxbox-api backend (used by the
+      NetBox netbox-proxbox plugin)
+    digest: 6d8631190f0beeb1c43cb045fcb9b11dbd2d953ef85b0f8aeb5c5f42d257e20b
+    name: proxbox-api
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/proxbox-api-0.1.0/proxbox-api-0.1.0.tgz
+    version: 0.1.0
   radicale:
   - apiVersion: v2
     appVersion: 3.1.8.0
@@ -42,4 +54,4 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/radicale-0.1.0/radicale-0.1.0.tgz
     version: 0.1.0
-generated: "2023-06-21T22:34:05.854110084Z"
+generated: "2026-09-05T19:52:58.798031205Z"

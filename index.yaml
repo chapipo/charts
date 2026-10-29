@@ -77,4 +77,23 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/slskd-vpn-0.1.0/slskd-vpn-0.1.0.tgz
     version: 0.1.0
-generated: "2026-10-29T21:28:25.963395097Z"
+  soularr:
+  - apiVersion: v2
+    appVersion: 1.2.3
+    created: "2026-10-29T23:14:58.287475291Z"
+    description: Soularr - bridges Lidarr's wanted list and slskd (Soulseek) for Kubernetes
+    digest: b7907a72b89291865ac5277aae108d7473bd5ec8bd6fdd76dbab56ea645d7bf0
+    home: https://github.com/mrusse/soularr
+    keywords:
+    - soularr
+    - lidarr
+    - slskd
+    - soulseek
+    name: soularr
+    sources:
+    - https://github.com/mrusse/soularr
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/soularr-0.1.0/soularr-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-10-29T23:14:58.287490303Z"

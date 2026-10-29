@@ -1,0 +1,59 @@
+{{- $p := .Values.slskd.persistence }}
+{{- $g := .Values.gluetun }}
+{{- if and $p.app.enabled (not $p.app.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "slskd-vpn.fullname" . }}-app
+  labels:
+    {{- include "slskd-vpn.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - {{ $p.app.accessMode | quote }}
+  {{- with $p.app.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $p.app.size | quote }}
+{{- end }}
+{{- if and $p.downloads.enabled (not $p.downloads.existingClaim) (not $p.downloads.nfs.server) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "slskd-vpn.fullname" . }}-downloads
+  labels:
+    {{- include "slskd-vpn.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - {{ $p.downloads.accessMode | quote }}
+  {{- with $p.downloads.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $p.downloads.size | quote }}
+{{- end }}
+{{- if and $g.enabled $g.persistence.enabled (not $g.persistence.useEmptyDir) (not $g.persistence.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "slskd-vpn.fullname" . }}-gluetun
+  labels:
+    {{- include "slskd-vpn.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ $g.persistence.accessMode | quote }}
+  {{- with $g.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $g.persistence.size | quote }}
+{{- end }}

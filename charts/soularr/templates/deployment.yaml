@@ -1,0 +1,133 @@
+{{- $p := .Values.persistence -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soularr.fullname" . }}
+  labels:
+    {{- include "soularr.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "soularr.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "soularr.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Restart the pod when config.ini or the chart's Secret changes
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if include "soularr.needsSecret" . }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: soularr
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          # config.ini is read from /config (read-only ConfigMap), state goes to /data.
+          # The web UI only looks for config.ini in /data, so it never sees the API keys.
+          args:
+            - /app/run.sh
+            - --config-dir
+            - /config
+            - --var-dir
+            - {{ $p.data.mountPath }}
+          env:
+            - name: TZ
+              value: {{ .Values.timezone | quote }}
+            - name: SCRIPT_INTERVAL
+              value: {{ .Values.scriptInterval | quote }}
+            - name: WEBUI_ENABLED
+              value: {{ .Values.webui.enabled | quote }}
+            - name: WEBUI_PORT
+              value: {{ .Values.webui.port | quote }}
+            {{- include "soularr.apiKeyEnv" (dict "root" . "envName" "LIDARR_API_KEY" "cfg" .Values.apiKeys.lidarr "chartKey" "lidarr-api-key") | nindent 12 }}
+            {{- include "soularr.apiKeyEnv" (dict "root" . "envName" "SLSKD_API_KEY" "cfg" .Values.apiKeys.slskd "chartKey" "slskd-api-key") | nindent 12 }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.webui.enabled }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.webui.port }}
+              protocol: TCP
+          {{- with .Values.probes }}
+          {{- if .liveness.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: {{ .liveness.periodSeconds }}
+            timeoutSeconds: {{ .liveness.timeoutSeconds }}
+            failureThreshold: {{ .liveness.failureThreshold }}
+          {{- end }}
+          {{- if .readiness.enabled }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: {{ .readiness.periodSeconds }}
+            timeoutSeconds: {{ .readiness.timeoutSeconds }}
+            failureThreshold: {{ .readiness.failureThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            {{- if $p.data.enabled }}
+            - name: data
+              mountPath: {{ $p.data.mountPath }}
+            {{- end }}
+            - name: downloads
+              mountPath: {{ $p.downloads.mountPath }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "soularr.fullname" . }}
+        {{- if $p.data.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $p.data.existingClaim | default (printf "%s-data" (include "soularr.fullname" .)) }}
+        {{- end }}
+        - name: downloads
+          {{- if $p.downloads.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $p.downloads.existingClaim }}
+          {{- else if $p.downloads.nfs.server }}
+          nfs:
+            server: {{ $p.downloads.nfs.server }}
+            path: {{ required "persistence.downloads.nfs.path is required" $p.downloads.nfs.path }}
+          {{- else }}
+          {{- fail "persistence.downloads needs existingClaim or nfs.server: Soularr must see the slskd download folder" }}
+          {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

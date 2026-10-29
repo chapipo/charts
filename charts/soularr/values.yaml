@@ -1,0 +1,198 @@
+## Naming
+nameOverride: ""
+fullnameOverride: ""
+
+revisionHistoryLimit: 3
+
+image:
+  # Versioned images are published on GHCR (Docker Hub only gets "latest" and branch tags)
+  repository: ghcr.io/mrusse/soularr
+  tag: "1.2.3"
+  pullPolicy: IfNotPresent
+
+## Soularr, Lidarr and slskd must run as the same user and group, otherwise imports fail.
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+timezone: Europe/Paris
+
+# Seconds between two Soularr runs (SCRIPT_INTERVAL)
+scriptInterval: 300
+
+## Web UI (logs, status).
+## WARNING: it has NO authentication. Do not expose it publicly without an auth layer
+## (e.g. a Traefik forward-auth middleware). This chart keeps config.ini outside the
+## directory the web UI reads, so the API keys are not shown there.
+webui:
+  enabled: true
+  port: 8265
+
+## API keys. Each one comes either from an existing Secret (recommended) or from a value
+## stored in a Secret created by this chart. They are injected as LIDARR_API_KEY and
+## SLSKD_API_KEY and referenced from config.ini as ${LIDARR_API_KEY} / ${SLSKD_API_KEY}.
+apiKeys:
+  lidarr:
+    value: ""
+    existingSecret:
+      name: ""
+      key: ""
+  slskd:
+    value: ""
+    # With the slskd-vpn chart installed as release "slskd-vpn" in the same namespace:
+    #   name: slskd-vpn-secrets
+    #   key: api-key
+    existingSecret:
+      name: ""
+      key: ""
+
+## config.ini content, rendered into a ConfigMap (no secrets in it).
+## One map per INI section. Lists are joined with ","; booleans become True/False.
+## Do not set api_key here: it is added automatically from apiKeys.
+## Paths: [Lidarr] download_dir = path as LIDARR sees it,
+##        [Slskd]  download_dir = path as SLSKD and SOULARR see it.
+config:
+  Lidarr:
+    host_url: http://lidarr.music.svc.cluster.local:8686
+    download_dir: /downloads/slskd
+    disable_sync: false
+
+  Slskd:
+    host_url: http://slskd-vpn.music.svc.cluster.local:5030
+    url_base: /
+    download_dir: /downloads/slskd
+    delete_searches: false
+    stalled_timeout: 3600
+    remote_queue_timeout: 300
+
+  Release Settings:
+    use_selected_lidarr_release: false
+    use_most_common_tracknum: true
+    allow_multi_disc: true
+    accepted_countries:
+      - Europe
+      - France
+      - Japan
+      - United Kingdom
+      - United States
+      - "[Worldwide]"
+      - Australia
+      - Canada
+    skip_region_check: false
+    accepted_formats:
+      - CD
+      - Digital Media
+      - Vinyl
+
+  Search Settings:
+    search_timeout: 5000
+    maximum_peer_queue: 50
+    minimum_peer_upload_speed: 0
+    minimum_filename_match_ratio: 0.8
+    minimum_search_interval: 5
+    search_retry_wait_hours: 0
+    allowed_filetypes:
+      - flac 24/192
+      - flac 16/44.1
+      - flac
+      - mp3 320
+    ignored_users: []
+    album_prepend_artist: false
+    search_type: incrementing_page    # all | incrementing_page | first_page
+    number_of_albums_to_grab: 10
+    title_blacklist: []
+    search_blacklist: []
+    search_source: missing            # missing | cutoff_unmet
+    failed_import_denylist: true
+    ignore_failed_users: false
+    failed_user_ignore_hours: 168
+
+  Download Settings:
+    download_filtering: true
+    use_extension_whitelist: false
+    extensions_whitelist:
+      - lrc
+      - nfo
+      - txt
+    rename_download_folders: true
+
+  Logging:
+    level: INFO
+    format: "[%(levelname)s|%(module)s|L%(lineno)d] %(asctime)s: %(message)s"
+    datefmt: "%Y-%m-%dT%H:%M:%S%z"
+    log_to_file: true
+    log_file: soularr.log
+    max_bytes: 1048576
+    backup_count: 3
+
+persistence:
+  # Soularr state: failed_users.json, failed_imports.json, search_attempts.json, logs
+  data:
+    enabled: true
+    mountPath: /data
+    existingClaim: ""
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 256Mi
+
+  # Download area shared with slskd and Lidarr. Soularr moves and renames folders here.
+  downloads:
+    mountPath: /downloads
+    existingClaim: ""
+    nfs:
+      server: ""
+      path: ""
+
+extraEnv: []
+extraVolumes: []
+extraVolumeMounts: []
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 96Mi
+  limits:
+    memory: 512Mi
+
+## Probes on the web UI port (only when webui.enabled)
+probes:
+  liveness:
+    enabled: true
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+service:
+  type: ClusterIP
+  port: 8265
+
+## Ingress for the web UI. See the warning on webui above.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: soularr.example.lan
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

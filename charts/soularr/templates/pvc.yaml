@@ -1,0 +1,20 @@
+{{- $d := .Values.persistence.data }}
+{{- if and $d.enabled (not $d.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "soularr.fullname" . }}-data
+  labels:
+    {{- include "soularr.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - {{ $d.accessMode | quote }}
+  {{- with $d.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $d.size | quote }}
+{{- end }}

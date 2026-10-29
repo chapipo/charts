@@ -1,0 +1,31 @@
+slskd has been deployed ({{ include "slskd-vpn.fullname" . }}, namespace {{ .Release.Namespace }}).
+
+1. Web UI access
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "slskd-vpn.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+   then open http://127.0.0.1:{{ .Values.service.port }}
+{{- end }}
+
+2. Web UI credentials
+   kubectl -n {{ .Release.Namespace }} get secret {{ include "slskd-vpn.secretName" . }} -o jsonpath='{.data.web-username}' | base64 -d; echo
+   kubectl -n {{ .Release.Namespace }} get secret {{ include "slskd-vpn.secretName" . }} -o jsonpath='{.data.web-password}' | base64 -d; echo
+
+3. slskd API key (for Soularr, [Slskd] api_key)
+   kubectl -n {{ .Release.Namespace }} get secret {{ include "slskd-vpn.secretName" . }} -o jsonpath='{.data.api-key}' | base64 -d; echo
+   Internal URL: http://{{ include "slskd-vpn.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+{{- if .Values.gluetun.enabled }}
+
+4. Check the VPN (the gluetun image ships wget, not curl)
+   Public IP:
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "slskd-vpn.fullname" . }} -c gluetun -- \
+     sh -c 'wget -qO- --header "X-API-Key: $CONTROL_APIKEY_RAW" http://127.0.0.1:{{ .Values.gluetun.controlServer.port }}/v1/publicip/ip'
+   Forwarded port:
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "slskd-vpn.fullname" . }} -c gluetun -- \
+     sh -c 'wget -qO- --header "X-API-Key: $CONTROL_APIKEY_RAW" http://127.0.0.1:{{ .Values.gluetun.controlServer.port }}/v1/portforward'
+   On the slskd side, the listen port in use shows up in the logs:
+   kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "slskd-vpn.fullname" . }} -c slskd | grep -i -E "vpn|listen"
+{{- end }}

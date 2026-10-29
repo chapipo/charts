@@ -1,0 +1,210 @@
+{{- $s := .Values.slskd -}}
+{{- $g := .Values.gluetun -}}
+{{- $p := $s.persistence -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "slskd-vpn.fullname" . }}
+  labels:
+    {{- include "slskd-vpn.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "slskd-vpn.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "slskd-vpn.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if not .Values.secrets.existingSecret }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and $g.enabled .Values.dns.throughVpn }}
+      # Resolve DNS through gluetun's DNS server (inside the tunnel)
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1
+        options:
+          - name: ndots
+            value: "1"
+      {{- end }}
+      {{- if and $g.enabled $g.nativeSidecar }}
+      initContainers:
+        {{- include "slskd-vpn.gluetunContainer" . | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- if and $g.enabled (not $g.nativeSidecar) }}
+        {{- include "slskd-vpn.gluetunContainer" . | nindent 8 }}
+        {{- end }}
+        - name: slskd
+          image: "{{ $s.image.repository }}:{{ $s.image.tag }}"
+          imagePullPolicy: {{ $s.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $s.securityContext | nindent 12 }}
+          env:
+            - name: TZ
+              value: {{ $s.timezone | quote }}
+            - name: SLSKD_HTTP_PORT
+              value: {{ $s.webPort | quote }}
+            - name: SLSKD_REMOTE_CONFIGURATION
+              value: {{ $s.remoteConfiguration | quote }}
+            - name: SLSKD_DOWNLOADS_DIR
+              value: {{ $s.directories.downloads | quote }}
+            - name: SLSKD_INCOMPLETE_DIR
+              value: {{ $s.directories.incomplete | quote }}
+            {{- with $s.directories.shared }}
+            - name: SLSKD_SHARED_DIR
+              value: {{ join ";" . | quote }}
+            {{- end }}
+            - name: SLSKD_SLSK_USERNAME
+              {{- include "slskd-vpn.secretRef" (dict "root" . "key" "soulseek-username") | nindent 14 }}
+            - name: SLSKD_SLSK_PASSWORD
+              {{- include "slskd-vpn.secretRef" (dict "root" . "key" "soulseek-password") | nindent 14 }}
+            - name: SLSKD_USERNAME
+              {{- include "slskd-vpn.secretRef" (dict "root" . "key" "web-username") | nindent 14 }}
+            - name: SLSKD_PASSWORD
+              {{- include "slskd-vpn.secretRef" (dict "root" . "key" "web-password") | nindent 14 }}
+            # Raw API key, reused below through $(...) expansion
+            - name: APIKEY_RAW
+              {{- include "slskd-vpn.secretRef" (dict "root" . "key" "api-key") | nindent 14 }}
+            - name: SLSKD_API_KEY
+              value: {{ printf "role=%s;cidr=%s;$(APIKEY_RAW)" $s.apiKey.role $s.apiKey.cidr | quote }}
+            {{- if $g.enabled }}
+            - name: SLSKD_VPN
+              value: "true"
+            - name: SLSKD_VPN_PORT_FORWARDING
+              value: {{ $g.vpn.portForwarding | quote }}
+            - name: SLSKD_VPN_GLUETUN_URL
+              value: {{ printf "http://127.0.0.1:%v" $g.controlServer.port | quote }}
+            - name: SLSKD_VPN_GLUETUN_API_KEY
+              {{- include "slskd-vpn.secretRef" (dict "root" . "key" "gluetun-api-key") | nindent 14 }}
+            - name: SLSKD_VPN_GLUETUN_TIMEOUT
+              value: {{ $s.vpn.gluetunTimeout | quote }}
+            {{- else }}
+            - name: SLSKD_SLSK_LISTEN_PORT
+              value: {{ $s.listenPort | quote }}
+            {{- end }}
+            {{- range $k, $v := $s.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            {{- with $s.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ $s.webPort }}
+              protocol: TCP
+            {{- if not $g.enabled }}
+            - name: listen
+              containerPort: {{ $s.listenPort }}
+              protocol: TCP
+            {{- end }}
+          {{- with .Values.probes }}
+          {{- if .startup.enabled }}
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: {{ .startup.periodSeconds }}
+            failureThreshold: {{ .startup.failureThreshold }}
+          {{- end }}
+          {{- if .liveness.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: {{ .liveness.periodSeconds }}
+            timeoutSeconds: {{ .liveness.timeoutSeconds }}
+            failureThreshold: {{ .liveness.failureThreshold }}
+          {{- end }}
+          {{- if .readiness.enabled }}
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: {{ .readiness.periodSeconds }}
+            timeoutSeconds: {{ .readiness.timeoutSeconds }}
+            failureThreshold: {{ .readiness.failureThreshold }}
+          {{- end }}
+          {{- end }}
+          volumeMounts:
+            {{- if $p.app.enabled }}
+            - name: app
+              mountPath: {{ $p.app.mountPath }}
+            {{- end }}
+            {{- if $p.downloads.enabled }}
+            - name: downloads
+              mountPath: {{ $p.downloads.mountPath }}
+            {{- end }}
+            {{- range $p.shares }}
+            - name: share-{{ .name }}
+              mountPath: {{ .mountPath }}
+              readOnly: {{ .readOnly | default false }}
+            {{- end }}
+            {{- with $s.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml $s.resources | nindent 12 }}
+      volumes:
+        {{- if $p.app.enabled }}
+        - name: app
+          persistentVolumeClaim:
+            claimName: {{ $p.app.existingClaim | default (printf "%s-app" (include "slskd-vpn.fullname" .)) }}
+        {{- end }}
+        {{- if $p.downloads.enabled }}
+        - name: downloads
+          {{- if $p.downloads.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $p.downloads.existingClaim }}
+          {{- else if $p.downloads.nfs.server }}
+          nfs:
+            server: {{ $p.downloads.nfs.server }}
+            path: {{ required "slskd.persistence.downloads.nfs.path is required" $p.downloads.nfs.path }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-downloads" (include "slskd-vpn.fullname" .) }}
+          {{- end }}
+        {{- end }}
+        {{- range $p.shares }}
+        {{- include "slskd-vpn.shareVolume" (dict "share" .) | nindent 8 }}
+        {{- end }}
+        {{- if and $g.enabled $g.persistence.enabled }}
+        - name: gluetun-data
+          {{- if $g.persistence.useEmptyDir }}
+          emptyDir: {}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ $g.persistence.existingClaim | default (printf "%s-gluetun" (include "slskd-vpn.fullname" .)) }}
+          {{- end }}
+        {{- end }}
+        {{- if and $g.enabled $g.tunHostPath }}
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

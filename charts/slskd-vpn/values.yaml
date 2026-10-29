@@ -1,0 +1,253 @@
+## Naming
+nameOverride: ""
+fullnameOverride: ""
+
+revisionHistoryLimit: 3
+
+## Pod-level security context.
+## No runAsUser here: gluetun must run as root, slskd runs as 1000 (see slskd.securityContext).
+podSecurityContext:
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+## DNS: when gluetun is enabled, slskd resolves names through gluetun's DNS server (127.0.0.1),
+## i.e. through the tunnel. Otherwise queries go to the cluster DNS, outside the VPN (DNS leak).
+## Trade-off: slskd can no longer resolve cluster service names (it does not need to).
+dns:
+  throughVpn: true
+
+## Secrets
+## Either the chart creates the Secret from secrets.values,
+## or you provide an existing Secret containing EXACTLY these keys:
+##   soulseek-username, soulseek-password, web-username, web-password, api-key, gluetun-api-key
+##   + wireguard-private-key (WireGuard) or openvpn-username / openvpn-password (OpenVPN)
+secrets:
+  existingSecret: ""
+  values:
+    soulseekUsername: ""      # required: Soulseek account (created on first login if it does not exist)
+    soulseekPassword: ""      # required
+    webUsername: "admin"
+    webPassword: ""           # generated if empty, kept across upgrades
+    apiKey: ""                # slskd API key (for Soularr), generated if empty
+    gluetunApiKey: ""         # gluetun control server key, generated if empty
+    wireguardPrivateKey: ""   # required when gluetun.vpn.type = wireguard
+    openvpnUsername: ""       # required when gluetun.vpn.type = openvpn
+    openvpnPassword: ""
+
+## slskd
+slskd:
+  image:
+    repository: slskd/slskd
+    tag: "0.26.2"
+    pullPolicy: IfNotPresent
+
+  securityContext:
+    runAsUser: 1000           # same UID as Lidarr and Soularr
+    runAsGroup: 1000
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+
+  timezone: Europe/Paris
+
+  # Web UI and API port (SLSKD_HTTP_PORT)
+  webPort: 5030
+
+  # Soulseek listen port, used only WITHOUT gluetun.
+  # With gluetun and port forwarding, slskd uses the port provided by the VPN.
+  listenPort: 50300
+
+  # Allow editing slskd.yml from the web UI
+  remoteConfiguration: true
+
+  directories:
+    downloads: /downloads/slskd
+    incomplete: /downloads/slskd-incomplete
+    # Shared directories (joined with ";" into SLSKD_SHARED_DIR). Must match mounted volumes.
+    shared:
+      - /music
+
+  # Primary API key (SLSKD_API_KEY), used by Soularr.
+  # cidr: restricts the key to the pod network (k3s default: 10.42.0.0/16).
+  apiKey:
+    role: ReadWrite
+    cidr: "10.42.0.0/16"
+
+  # slskd VPN integration
+  vpn:
+    # Timeout for requests to gluetun (ms). Users report disconnects with the default;
+    # 5000 is safer.
+    gluetunTimeout: 5000
+
+  # Additional SLSKD_* variables (key: value map)
+  env: {}
+  extraEnv: []
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+  persistence:
+    # slskd application directory (/app: slskd.yml, database, logs)
+    app:
+      enabled: true
+      mountPath: /app
+      existingClaim: ""
+      storageClass: ""
+      accessMode: ReadWriteOnce
+      size: 1Gi
+
+    # Downloads: must be visible to Lidarr and Soularr at the same path
+    downloads:
+      enabled: true
+      mountPath: /downloads
+      existingClaim: ""
+      nfs:
+        server: ""
+        path: ""
+      storageClass: ""
+      accessMode: ReadWriteOnce
+      size: 50Gi
+
+    # Soulseek shares (read-only). Each entry: existingClaim OR nfs.
+    shares:
+      - name: music
+        mountPath: /music
+        readOnly: true
+        existingClaim: ""
+        nfs:
+          server: ""
+          path: ""
+
+  extraVolumeMounts: []
+
+## slskd probes (TCP on the web port).
+## slskd also exposes /health, but it may report unhealthy while waiting for the VPN:
+## TCP probes avoid restart loops during that wait.
+probes:
+  startup:
+    enabled: true
+    periodSeconds: 5
+    failureThreshold: 60
+  liveness:
+    enabled: true
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+## Gluetun
+gluetun:
+  enabled: true
+
+  # Native sidecar (init container with restartPolicy: Always): gluetun starts BEFORE slskd
+  # and stops AFTER it. Enabled by default since Kubernetes 1.29.
+  # Set to false on older clusters: gluetun then runs as a regular container.
+  nativeSidecar: true
+
+  image:
+    repository: qmcgaw/gluetun
+    tag: v3.41.3
+    pullPolicy: IfNotPresent
+
+  # NET_ADMIN is usually enough: gluetun creates /dev/net/tun if it is missing.
+  # No privileged mode by default (unlike the qbittorrent-vpn chart).
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    capabilities:
+      add:
+        - NET_ADMIN
+
+  # Mount /dev/net/tun from the node (useful when gluetun cannot create the device,
+  # e.g. k3s nodes running in a Proxmox LXC container). Often requires privileged: true.
+  tunHostPath: false
+
+  vpn:
+    # Providers with port forwarding in gluetun: protonvpn, private internet access,
+    # perfect privacy, privatevpn
+    provider: protonvpn
+    type: wireguard             # wireguard or openvpn
+    serverCountries: ""         # e.g. "France,Switzerland"
+    serverCities: ""
+    serverHostnames: ""
+    # Port forwarding: required to be reachable on Soulseek.
+    # ProtonVPN WireGuard: generate the config with "NAT-PMP (Port Forwarding)" enabled.
+    # ProtonVPN OpenVPN: append "+pmp" to the username.
+    portForwarding: true
+    # Only pick servers that support port forwarding (ProtonVPN, PIA)
+    portForwardOnly: true
+    wireguard:
+      addresses: ""             # optional depending on the provider
+
+  controlServer:
+    port: 8000
+
+  # Subnets reachable OUTSIDE the tunnel (e.g. LAN, cluster). Empty = none.
+  # slskd does not need any: inbound connections (Ingress, Soularr, probes)
+  # are allowed through FIREWALL_INPUT_PORTS, which automatically includes the web port.
+  outboundSubnets: ""
+
+  # Extra inbound ports to open in the gluetun firewall
+  extraInputPorts: []
+
+  # Additional gluetun variables (key: value map), e.g. LOG_LEVEL: debug
+  settings: {}
+  extraEnv: []
+
+  # Startup probe: with the native sidecar, slskd only starts once the tunnel is healthy.
+  startupProbe:
+    enabled: true
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 60
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+  # /gluetun: gluetun data (with PIA, keeping this directory preserves the same forwarded port)
+  persistence:
+    enabled: true
+    useEmptyDir: false
+    existingClaim: ""
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 100Mi
+
+## Web UI / API service
+service:
+  type: ClusterIP
+  port: 5030
+  # Soulseek listen port service, only WITHOUT gluetun
+  listen:
+    enabled: false
+    type: LoadBalancer
+
+## Ingress
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: slskd.example.lan
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+extraVolumes: []

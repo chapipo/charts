@@ -54,4 +54,27 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/radicale-0.1.0/radicale-0.1.0.tgz
     version: 0.1.0
-generated: "2026-09-05T19:52:58.798031205Z"
+  slskd-vpn:
+  - annotations:
+      inspiredBy: rtomik/helm-charts qbittorrent-vpn (MIT)
+    apiVersion: v2
+    appVersion: 0.26.2
+    created: "2026-10-29T21:28:25.963382529Z"
+    description: slskd (Soulseek client) with a Gluetun VPN sidecar for Kubernetes
+    digest: e655751cd373f61ddd595114af9b51053aa0ced24f69d1e9de9747a63cb4cf31
+    home: https://github.com/slskd/slskd
+    keywords:
+    - slskd
+    - soulseek
+    - vpn
+    - gluetun
+    name: slskd-vpn
+    sources:
+    - https://github.com/slskd/slskd
+    - https://github.com/qdm12/gluetun
+    - https://github.com/rtomik/helm-charts/tree/main/charts/qbittorrent-vpn
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/slskd-vpn-0.1.0/slskd-vpn-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-10-29T21:28:25.963395097Z"

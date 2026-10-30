@@ -1,0 +1,96 @@
+{{- $m := .Values.persistence.music -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "beets.fullname" . }}
+  labels:
+    {{- include "beets.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  {{- with .Values.timeZone }}
+  timeZone: {{ . | quote }}
+  {{- end }}
+  suspend: {{ .Values.suspend }}
+  # Never two runs at once: they would share the same database
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      {{- with .Values.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ . }}
+      {{- end }}
+      template:
+        metadata:
+          labels:
+            {{- include "beets.selectorLabels" . | nindent 12 }}
+          annotations:
+            checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+            {{- with .Values.podAnnotations }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        spec:
+          restartPolicy: Never
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: beets
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              # Bypass the image's init system (s6, which starts "beet web"): run the job directly.
+              command: ["/bin/bash", "/scripts/run.sh"]
+              env:
+                - name: TZ
+                  value: {{ .Values.timeZone | default "UTC" | quote }}
+                - name: BEETSDIR
+                  value: /config
+                - name: HOME
+                  value: /config
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
+              volumeMounts:
+                - name: data
+                  mountPath: /config
+                - name: files
+                  mountPath: /config/config.yaml
+                  subPath: config.yaml
+                  readOnly: true
+                - name: files
+                  mountPath: /scripts/run.sh
+                  subPath: run.sh
+                  readOnly: true
+                - name: music
+                  mountPath: {{ $m.mountPath }}
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ include "beets.dataClaim" . }}
+            - name: files
+              configMap:
+                name: {{ include "beets.fullname" . }}
+            - name: music
+              {{- if $m.existingClaim }}
+              persistentVolumeClaim:
+                claimName: {{ $m.existingClaim }}
+              {{- else if $m.nfs.server }}
+              nfs:
+                server: {{ $m.nfs.server }}
+                path: {{ required "persistence.music.nfs.path is required" $m.nfs.path }}
+              {{- else }}
+              {{- fail "persistence.music needs existingClaim or nfs.server: beets must see the Lidarr library" }}
+              {{- end }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

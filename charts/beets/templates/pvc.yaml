@@ -1,0 +1,21 @@
+{{- $d := .Values.persistence.data }}
+{{- if not $d.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "beets.dataClaim" . }}
+  labels:
+    {{- include "beets.labels" . | nindent 4 }}
+  annotations:
+    # Keep the beets database on helm uninstall
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - {{ $d.accessMode | quote }}
+  {{- with $d.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $d.size | quote }}
+{{- end }}

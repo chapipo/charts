@@ -1,0 +1,15 @@
+beets runs as CronJob {{ include "beets.fullname" . }} ({{ .Values.schedule }}, {{ .Values.timeZone | default "UTC" }}).
+It tags {{ .Values.persistence.music.mountPath }} in place and never moves files.
+
+1. Run it now instead of waiting for the schedule
+   kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ include "beets.fullname" . }} {{ include "beets.fullname" . }}-manual-$(date +%s)
+
+2. Follow a run
+   kubectl -n {{ .Release.Namespace }} logs -f job/<job-name>
+
+3. Albums skipped (no confident match), to handle by hand
+   Listed as "skip" lines in /config/import.log on the {{ include "beets.dataClaim" . }} volume.
+
+In Lidarr: Settings > Metadata > Tag Audio Files with Metadata = "For new downloads only",
+Scrub Existing Tags = off. Lidarr then writes the exact MusicBrainz release ID at import,
+and beets reuses it, so both tools agree on the edition.

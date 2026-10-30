@@ -116,7 +116,13 @@ The chart was rendered in several scenarios and validated against the official K
 JSON schemas (CronJob, ConfigMap, PersistentVolumeClaim). The generated `config.yaml` was checked
 against beets 2.14.1: every option exists in `config_default.yaml` or in the plugin's own
 defaults, every plugin exists, and the safety settings hold. Every `beet` option used by the run
-script exists in the 2.14.1 sources. It has **not been deployed on a real cluster yet**: run
+script exists in the 2.14.1 sources. The run script itself was executed against a stub `beet`
+reproducing the real behaviour: empty database (first run), populated database, and empty
+library (must refuse).
+
+On the very first run, beets prints a series of `Created database backup at: ...-before-...bak`
+lines: it applies its internal schema migrations once to the new database and backs it up first.
+Those files are copies of an empty database and can be deleted. It has **not been deployed on a real cluster yet**: run
 `helm template`, then trigger a manual run on a small library first.
 
 ## Sources

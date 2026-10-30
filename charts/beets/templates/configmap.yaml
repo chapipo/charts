@@ -19,8 +19,15 @@ data:
       exit 1
     fi
 
-    echo "== $(date -Is) Syncing the database with the files on disk (no moves)"
-    beet update -M
+    # "beet update" fails with "No matching items to update" on an empty database,
+    # so it only runs once the first import has added something.
+    TRACKS=$(beet stats | awk '/^Tracks:/ {print $2}')
+    if [ "${TRACKS:-0}" -gt 0 ]; then
+      echo "== $(date -Is) Syncing the database ($TRACKS tracks) with the files on disk (no moves)"
+      beet update -M
+    else
+      echo "== $(date -Is) Empty database: first build, nothing to sync yet"
+    fi
 
     echo "== $(date -Is) Tagging new albums in place"
     beet import --quiet --incremental "$MUSIC"

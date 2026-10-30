@@ -1,0 +1,15 @@
+apiVersion: v2
+name: beets
+description: beets as a scheduled in-place tagger next to Lidarr (persistent library database, never moves files)
+type: application
+version: 0.1.0
+appVersion: "2.14.1"
+keywords:
+  - beets
+  - tagging
+  - musicbrainz
+  - lidarr
+home: https://beets.io
+sources:
+  - https://github.com/beetbox/beets
+  - https://github.com/linuxserver/docker-beets

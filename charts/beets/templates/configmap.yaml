@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "beets.fullname" . }}
+  labels:
+    {{- include "beets.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    {{- include "beets.config" . | nindent 4 }}
+  run.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    MUSIC={{ .Values.persistence.music.mountPath | quote }}
+
+    # Safety: with an empty or unmounted library, "beet update" would remove every
+    # item from the database (their files look deleted). Refuse to run.
+    if [ ! -d "$MUSIC" ] || [ -z "$(ls -A "$MUSIC" 2>/dev/null)" ]; then
+      echo "ERROR: $MUSIC is missing or empty, refusing to run." >&2
+      exit 1
+    fi
+
+    echo "== $(date -Is) Syncing the database with the files on disk (no moves)"
+    beet update -M
+
+    echo "== $(date -Is) Tagging new albums in place"
+    beet import --quiet --incremental "$MUSIC"
+
+    echo "== $(date -Is) Done. Albums in database: $(beet ls -a | wc -l)"

@@ -1,0 +1,111 @@
+## Naming
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: lscr.io/linuxserver/beets
+  tag: "2.14.1-ls357"
+  pullPolicy: IfNotPresent
+
+## Schedule. Each run:
+##   1. beet update -M  : syncs the database with the files on disk (Lidarr renames, upgrades,
+##                        deletions). Never moves or renames anything (-M).
+##   2. beet import     : tags albums that are not in the database yet, in place.
+## Already processed albums are skipped thanks to the persistent database and the
+## incremental state, so a run only works on what is new.
+schedule: "17 * * * *"
+timeZone: Europe/Paris
+suspend: false
+# Kill a run that takes longer than this (seconds). Progress is saved after every album,
+# so the next run continues where this one stopped.
+activeDeadlineSeconds: 21600
+successfulJobsHistoryLimit: 1
+failedJobsHistoryLimit: 3
+
+## Same UID/GID as Lidarr, slskd and Soularr: beets rewrites the files Lidarr imported.
+## The image's init system is bypassed: beet runs directly as this user.
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+persistence:
+  # beets state: library.db (the database), state.pickle (incremental history), import.log.
+  # Back it up: losing it means a full re-scan of the library.
+  data:
+    existingClaim: ""
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 1Gi
+
+  # The Lidarr library (root folder), shared with Lidarr and Navidrome
+  music:
+    mountPath: /music
+    existingClaim: ""
+    nfs:
+      server: ""
+      path: ""
+
+## beets configuration (rendered to config.yaml).
+## The chart ENFORCES the safety settings below and refuses to render if you change them:
+##   directory, library, statefile         -> fixed paths
+##   import.move/copy/link/hardlink/reflink -> no   (Lidarr owns file names and folders)
+##   import.quiet, import.incremental       -> yes  (unattended run, only new albums)
+##   import.duplicate_action                -> must not be "ask" (no one can answer)
+## Everything else is yours to change.
+config:
+  plugins:
+    - musicbrainz   # metadata source (a plugin since beets 2.x)
+    - chroma        # acoustic fingerprinting when existing tags are poor
+    - fetchart      # fetch cover art
+    - embedart      # embed it into the files
+    - lastgenre     # genres from Last.fm
+    - replaygain    # volume normalization tags
+    - scrub         # remove leftover tags before writing clean ones
+
+  import:
+    write: yes
+    autotag: yes
+    timid: no
+    # When no confident match is found: skip the album (it stays as Lidarr tagged it).
+    quiet_fallback: skip
+    # Skipped albums are recorded and NOT retried every run. Handle them by hand
+    # (see the README): the list is in /config/import.log.
+    incremental_skip_later: no
+    # An album already in the database found again: leave it alone.
+    duplicate_action: skip
+    log: /config/import.log
+
+  chroma:
+    auto: yes
+  fetchart:
+    auto: yes
+  embedart:
+    auto: yes
+  lastgenre:
+    auto: yes
+  replaygain:
+    auto: yes
+    backend: ffmpeg
+  scrub:
+    auto: yes
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}

@@ -1,5 +1,26 @@
 apiVersion: v1
 entries:
+  beets:
+  - apiVersion: v2
+    appVersion: 2.14.1
+    created: "2026-10-30T20:34:33.795105195Z"
+    description: beets as a scheduled in-place tagger next to Lidarr (persistent library
+      database, never moves files)
+    digest: a8ebb2310af56b894e5cabffea98a94dca1f2469486dbfdeccf1f594f2468b61
+    home: https://beets.io
+    keywords:
+    - beets
+    - tagging
+    - musicbrainz
+    - lidarr
+    name: beets
+    sources:
+    - https://github.com/beetbox/beets
+    - https://github.com/linuxserver/docker-beets
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/beets-0.1.0/beets-0.1.0.tgz
+    version: 0.1.0
   calibre-web:
   - apiVersion: v2
     appVersion: 0.6.20
@@ -96,4 +117,4 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/soularr-0.1.0/soularr-0.1.0.tgz
     version: 0.1.0
-generated: "2026-10-29T23:14:58.287490303Z"
+generated: "2026-10-30T20:34:33.795126053Z"

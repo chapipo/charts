@@ -100,6 +100,28 @@ entries:
       inspiredBy: rtomik/helm-charts qbittorrent-vpn (MIT)
     apiVersion: v2
     appVersion: 0.26.2
+    created: "2026-11-10T11:02:00.144112143Z"
+    description: slskd (Soulseek client) with a Gluetun VPN sidecar for Kubernetes
+    digest: c9cf3cd49474230166791000a33df9bc837db140031b3175b758ace9b412802c
+    home: https://github.com/slskd/slskd
+    keywords:
+    - slskd
+    - soulseek
+    - vpn
+    - gluetun
+    name: slskd-vpn
+    sources:
+    - https://github.com/slskd/slskd
+    - https://github.com/qdm12/gluetun
+    - https://github.com/rtomik/helm-charts/tree/main/charts/qbittorrent-vpn
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/slskd-vpn-0.2.0/slskd-vpn-0.2.0.tgz
+    version: 0.2.0
+  - annotations:
+      inspiredBy: rtomik/helm-charts qbittorrent-vpn (MIT)
+    apiVersion: v2
+    appVersion: 0.26.2
     created: "2026-10-29T21:28:25.963382529Z"
     description: slskd (Soulseek client) with a Gluetun VPN sidecar for Kubernetes
     digest: e655751cd373f61ddd595114af9b51053aa0ced24f69d1e9de9747a63cb4cf31
@@ -137,4 +159,4 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/soularr-0.1.0/soularr-0.1.0.tgz
     version: 0.1.0
-generated: "2026-10-30T20:42:11.47745649Z"
+generated: "2026-11-10T11:02:00.144128087Z"

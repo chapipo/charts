@@ -67,6 +67,21 @@ ingress:
       paths: [{ path: /, pathType: Prefix }]
 ```
 
+To expose the web UI through the [Gateway API](https://gateway-api.sigs.k8s.io/) instead of
+(or in addition to) an Ingress, enable `httpRoute`. The Gateway API CRDs and a Gateway must
+already exist in the cluster:
+
+```yaml
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: my-gateway
+      namespace: gateway-system
+      sectionName: https   # optional: attach to a specific listener
+  hostnames:
+    - slskd.example.lan
+```
+
 Then:
 
 ```sh

@@ -5,7 +5,13 @@ slskd has been deployed ({{ include "slskd-vpn.fullname" . }}, namespace {{ .Rel
 {{- range .Values.ingress.hosts }}
    http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
 {{- end }}
-{{- else }}
+{{- end }}
+{{- if .Values.httpRoute.enabled }}
+{{- range .Values.httpRoute.hostnames }}
+   http(s)://{{ . }}  (HTTPRoute, scheme depends on the Gateway listener)
+{{- end }}
+{{- end }}
+{{- if not (or .Values.ingress.enabled .Values.httpRoute.enabled) }}
    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "slskd-vpn.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
    then open http://127.0.0.1:{{ .Values.service.port }}
 {{- end }}

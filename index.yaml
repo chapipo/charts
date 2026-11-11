@@ -44,6 +44,16 @@ entries:
   calibre-web:
   - apiVersion: v2
     appVersion: 0.6.20
+    created: "2026-11-11T14:09:07.643852963Z"
+    description: A Helm chart for Kubernetes
+    digest: 6d1f2cffee1291c2f90929de2bda1551d9e7fdf9cc154cba26cfe7b53c45d67a
+    name: calibre-web
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/calibre-web-0.2.1/calibre-web-0.2.1.tgz
+    version: 0.2.1
+  - apiVersion: v2
+    appVersion: 0.6.20
     created: "2026-11-11T13:59:09.044338147Z"
     description: A Helm chart for Kubernetes
     digest: 9c5eee41b8c1cbcb6065b796b62e86598b300b6860c6c00db532af669a4852e1
@@ -110,6 +120,28 @@ entries:
       inspiredBy: rtomik/helm-charts qbittorrent-vpn (MIT)
     apiVersion: v2
     appVersion: 0.26.2
+    created: "2026-11-11T14:09:07.805310919Z"
+    description: slskd (Soulseek client) with a Gluetun VPN sidecar for Kubernetes
+    digest: ca7f7e7d915210a0295278fc2755bc9b97f19cb32c3c6ad5a63d9bf8e235f75b
+    home: https://github.com/slskd/slskd
+    keywords:
+    - slskd
+    - soulseek
+    - vpn
+    - gluetun
+    name: slskd-vpn
+    sources:
+    - https://github.com/slskd/slskd
+    - https://github.com/qdm12/gluetun
+    - https://github.com/rtomik/helm-charts/tree/main/charts/qbittorrent-vpn
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/slskd-vpn-0.2.1/slskd-vpn-0.2.1.tgz
+    version: 0.2.1
+  - annotations:
+      inspiredBy: rtomik/helm-charts qbittorrent-vpn (MIT)
+    apiVersion: v2
+    appVersion: 0.26.2
     created: "2026-11-10T11:02:00.144112143Z"
     description: slskd (Soulseek client) with a Gluetun VPN sidecar for Kubernetes
     digest: c9cf3cd49474230166791000a33df9bc837db140031b3175b758ace9b412802c
@@ -169,4 +201,4 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/soularr-0.1.0/soularr-0.1.0.tgz
     version: 0.1.0
-generated: "2026-11-11T13:59:09.044359139Z"
+generated: "2026-11-11T14:09:07.805322997Z"

@@ -120,6 +120,9 @@ storage:
   accessModes:
     - ReadWriteOnce
 
+# Extra containers in the Argus pod
+sidecars: []
+
 nodeSelector: {}
 
 tolerations: []

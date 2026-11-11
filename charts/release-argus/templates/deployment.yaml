@@ -97,6 +97,9 @@ spec:
             timeoutSeconds: 5
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+        {{- with .Values.sidecars }}
+        {{- tpl (toYaml .) $ | nindent 8 }}
+        {{- end }}
       volumes:
         - name: seed
           secret:

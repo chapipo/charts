@@ -115,6 +115,21 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/radicale-0.1.0/radicale-0.1.0.tgz
     version: 0.1.0
+  release-argus:
+  - apiVersion: v2
+    appVersion: 0.39.0
+    created: "2026-11-11T19:22:02.718077913Z"
+    description: A Helm chart for Argus, a tool to monitor and act on new software
+      releases
+    digest: ea473391bf643a6b531bc095aca9525bb12548d6f6914b8a0804908bb650e5a9
+    home: https://release-argus.io
+    name: release-argus
+    sources:
+    - https://github.com/release-argus/Argus
+    type: application
+    urls:
+    - https://github.com/chapipo/charts/releases/download/release-argus-0.1.0/release-argus-0.1.0.tgz
+    version: 0.1.0
   slskd-vpn:
   - annotations:
       inspiredBy: rtomik/helm-charts qbittorrent-vpn (MIT)
@@ -201,4 +216,4 @@ entries:
     urls:
     - https://github.com/chapipo/charts/releases/download/soularr-0.1.0/soularr-0.1.0.tgz
     version: 0.1.0
-generated: "2026-11-11T14:09:07.805322997Z"
+generated: "2026-11-11T19:22:02.718100156Z"

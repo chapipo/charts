@@ -1,0 +1,15 @@
+apiVersion: v2
+name: release-argus
+description: A Helm chart for Argus, a tool to monitor and act on new software releases
+home: https://release-argus.io
+sources:
+  - https://github.com/release-argus/Argus
+
+type: application
+
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+version: 0.1.0
+
+# This is the version number of the application being deployed.
+appVersion: "0.39.0"

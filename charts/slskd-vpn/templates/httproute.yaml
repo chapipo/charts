@@ -15,7 +15,9 @@ metadata:
 spec:
   parentRefs:
     {{- range .Values.httpRoute.parentRefs }}
-    - name: {{ .name }}
+    - group: {{ .group | default "gateway.networking.k8s.io" }}
+      kind: {{ .kind | default "Gateway" }}
+      name: {{ .name }}
       {{- with .namespace }}
       namespace: {{ . }}
       {{- end }}
@@ -36,8 +38,11 @@ spec:
     {{- range .Values.httpRoute.rules }}
     {{- /* HTTPRoute backendRefs need a numeric port (named ports are not supported) */}}
     - backendRefs:
-        - name: {{ include "slskd-vpn.fullname" $ }}
+        - group: ""
+          kind: Service
+          name: {{ include "slskd-vpn.fullname" $ }}
           port: {{ $.Values.service.port }}
+          weight: 1
       {{- with .matches }}
       matches:
         {{- toYaml . | nindent 8 }}
